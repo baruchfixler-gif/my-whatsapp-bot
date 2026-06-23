@@ -1,14 +1,12 @@
 const { default: makeWASocket, useMultiFileAuthState } = require('baileys');
+const qrcode = require('qrcode-terminal'); // הוספנו את הספרייה הזו
 
 async function startBot() {
-    console.log('מתחיל חיבור לווטסאפ...');
-    
-    // ניצור תיקיית אימות מקומית
     const { state, saveCreds } = await useMultiFileAuthState('./auth_session');
     
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false // ביטלנו את זה כי זה עושה באגים ב-Railway
+        printQRInTerminal: false 
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -16,12 +14,11 @@ async function startBot() {
     sock.ev.on('connection.update', (update) => {
         const { connection, qr } = update;
         
-        // כאן הקסם: אם יש QR, הוא יודפס כלינק בלוגים
         if (qr) {
-            console.log('--- יש QR! תעתיק את הלינק הבא לדפדפן כדי לסרוק ---');
-            console.log('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
+            console.log('--- QR CODE ---');
+            qrcode.generate(qr, { small: true }); // פקודה שמדפיסה את ה-QR בצורה ויזואלית בטרמינל
         }
-
+        
         if (connection === 'open') {
             console.log('הבוט מחובר ופעיל!');
         }
