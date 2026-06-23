@@ -1,5 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('baileys');
-const mongoose = require('mongoose');
+const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');const mongoose = require('mongoose');
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Connected to MongoDB'))
