@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState } = require('@baileys/baileys');
+const { default: makeWASocket, useMultiFileAuthState } = require('baileys');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const mongoose = require('mongoose');
 
