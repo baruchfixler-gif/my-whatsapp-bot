@@ -1,36 +1,36 @@
-const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');const mongoose = require('mongoose');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('baileys');
+const mongoose = require('mongoose');
 
+// חיבור למונגו
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => console.error('MongoDB error:', err));
 
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    // שימוש באובייקט זיכרון פשוט במקום בתיקייה
+    const state = { creds: { noiseKey: null, registryId: 0, advSecretKey: null, pairingMode: false }, keys: { get: () => null, set: () => {} } };
     
     const sock = makeWASocket({
-        auth: state,
-        browser: ['MyBot', 'Chrome', '1.0.0'],
-        // מונע מהבוט להיסגר בגלל זמן המתנה
-        connectTimeoutMs: 60000 
+        auth: { state, saveCreds: () => {} },
+        printQRInTerminal: false
     });
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, qr } = update;
         
         if (qr) {
-            console.log('QR CODE DETECTED:');
+            console.log('--- QR CODE ---');
             console.log('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
         }
 
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) startBot();
+            setTimeout(startBot, 5000); // ניסיון חיבור מחדש אחרי 5 שניות
         } else if (connection === 'open') {
-            console.log('Bot is online!');
+            console.log('הבוט מחובר ופעיל!');
         }
     });
-
-    sock.ev.on('creds.update', saveCreds);
 }
 
+// שומר על הבוט בחיים
+setInterval(() => {}, 1000);
 startBot();
