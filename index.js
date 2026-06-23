@@ -1,30 +1,37 @@
-const { default: makeWASocket, useMultiFileAuthState } = require('baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('baileys');
 
 async function startBot() {
-    console.log('מנסה להתחבר לווטסאפ...');
+    // יוצרים תיקייה בשם auth_session בתוך השרת
     const { state, saveCreds } = await useMultiFileAuthState('./auth_session');
     
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true 
+        printQRInTerminal: false, // ביטלנו את זה כי זה עושה בעיות
+        browser: ['MyBot', 'Chrome', '10.0']
     });
 
-   sock.ev.on('connection.update', (update) => {
-    const { connection, qr, lastDisconnect } = update;
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        
+        // כאן הקסם: אם יש QR, נדפיס אותו כלינק ללוגים
+        if (qr) {
+            console.log('--- יש QR! תסרוק אותו: ---');
+            console.log('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
+        }
 
-    // הטיפול ב-QR החדש
-    if (qr) {
-        console.log('--- QR CODE הגיע! ---');
-        console.log('תעתיק את הקוד הזה לאתר QR Generator או תשתמש ב-Pairing Code:');
-        console.log(qr); 
-    }
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('חיבור נסגר. סיבה:', lastDisconnect?.error?.output?.payload?.message);
+            if (shouldReconnect) {
+                console.log('מנסה להתחבר מחדש...');
+                startBot();
+            }
+        } else if (connection === 'open') {
+            console.log('--- הבוט מחובר ופעיל! ---');
+        }
+    });
 
-    if (connection === 'close') {
-        console.log('החיבור נסגר, מנסה שוב...');
-    } else if (connection === 'open') {
-        console.log('הבוט מחובר ופעיל!');
-    }
-});
+    sock.ev.on('creds.update', saveCreds);
 }
 
 startBot();
