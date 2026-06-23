@@ -9,13 +9,22 @@ async function startBot() {
         printQRInTerminal: true 
     });
 
-    sock.ev.on('creds.update', saveCreds);
+   sock.ev.on('connection.update', (update) => {
+    const { connection, qr, lastDisconnect } = update;
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, qr } = update;
-        if (qr) console.log('QR CODE:', qr);
-        if (connection === 'open') console.log('הבוט מחובר!');
-    });
+    // הטיפול ב-QR החדש
+    if (qr) {
+        console.log('--- QR CODE הגיע! ---');
+        console.log('תעתיק את הקוד הזה לאתר QR Generator או תשתמש ב-Pairing Code:');
+        console.log(qr); 
+    }
+
+    if (connection === 'close') {
+        console.log('החיבור נסגר, מנסה שוב...');
+    } else if (connection === 'open') {
+        console.log('הבוט מחובר ופעיל!');
+    }
+});
 }
 
 startBot();
