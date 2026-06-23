@@ -1,14 +1,13 @@
 {
-  "name": "whatsapp-calorie-bot",
+  "name": "my-whatsapp-bot",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "baileys": "^6.7.6",
-    "@google/generative-ai": "^0.11.1",
-    "mongoose": "^8.4.0",
-    "pino": "^9.0.0"
+    "@baileys/baileys": "^6.7.8",
+    "@google/generative-ai": "^0.11.2",
+    "mongoose": "^8.3.0"
   }
 }
