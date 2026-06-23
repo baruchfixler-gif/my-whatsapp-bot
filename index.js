@@ -1,30 +1,29 @@
-const { default: makeWASocket } = require('baileys');
+const { default: makeWASocket, useMultiFileAuthState } = require('baileys');
 const mongoose = require('mongoose');
 
-// חיבור למונגו עם timeout קצר יותר
-mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error'));
+// חיבור למונגו
+mongoose.connect(process.env.MONGO_URI).catch(err => console.log(err));
 
 async function startBot() {
+    // שימוש בתיקייה זמנית לזיכרון
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    
     const sock = makeWASocket({
-        auth: { state: { creds: { noiseKey: null, registryId: 0, advSecretKey: null, pairingMode: false }, keys: { get: () => null, set: () => {} } }, saveCreds: () => {} },
-        printQRInTerminal: false,
-        browser: ['MyBot', 'Chrome', '1.0.0']
+        auth: state,
+        printQRInTerminal: true // ננסה להדפיס QR רגיל שוב
     });
 
-    // מחכים 7 שניות ואז מבקשים את קוד החיבור
-    setTimeout(async () => {
-        try {
-            const code = await sock.requestPairingCode('972526241127'); // שנה למספר שלך!
-            console.log('הקוד שלך לחיבור: ' + code);
-        } catch (err) {
-            console.log('שגיאה ביצירת קוד, מנסה שוב...');
-        }
-    }, 7000);
+    sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
-        if (update.connection === 'open') console.log('הבוט מחובר!');
+        const { connection, qr } = update;
+        if (qr) {
+            console.log('--- מצאתי QR! ---');
+            console.log(qr); // בגרסאות מסוימות זה מדפיס את הקוד, בגרסאות אחרות צריך לסרוק מהמסך
+        }
+        if (connection === 'open') {
+            console.log('הבוט מחובר!');
+        }
     });
 }
 
