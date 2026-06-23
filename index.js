@@ -1,56 +1,31 @@
-const { default: makeWASocket, DisconnectReason } = require('baileys');
+const { default: makeWASocket } = require('baileys');
 const mongoose = require('mongoose');
 
-// חיבור למסד הנתונים
-mongoose.connect(process.env.MONGO_URI)
+// חיבור למונגו עם timeout קצר יותר
+mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
   .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB error:', err));
+  .catch(err => console.error('MongoDB connection error'));
 
 async function startBot() {
-    // הגדרה בזיכרון בלבד (מונע קריסות של הרשאות ב-Railway)
-    const state = { creds: { noiseKey: null, registryId: 0, advSecretKey: null, pairingMode: false }, keys: { get: () => null, set: () => {} } };
-    
     const sock = makeWASocket({
-        auth: { state, saveCreds: () => {} },
+        auth: { state: { creds: { noiseKey: null, registryId: 0, advSecretKey: null, pairingMode: false }, keys: { get: () => null, set: () => {} } }, saveCreds: () => {} },
         printQRInTerminal: false,
-        browser: ['MyBot', 'Chrome', '10.0.0']
+        browser: ['MyBot', 'Chrome', '1.0.0']
     });
 
-    // בקשת קוד חיבור (Pairing Code)
+    // מחכים 7 שניות ואז מבקשים את קוד החיבור
     setTimeout(async () => {
-        if (!sock.authState.creds.registered) {
-            const phoneNumber = '972526241127'; // שנה למספר שלך!
-            const code = await sock.requestPairingCode(phoneNumber);
-            console.log('--- קוד חיבור לווטסאפ ---');
-            console.log('הקוד שלך הוא: ' + code);
+        try {
+            const code = await sock.requestPairingCode('972526241127'); // שנה למספר שלך!
+            console.log('הקוד שלך לחיבור: ' + code);
+        } catch (err) {
+            console.log('שגיאה ביצירת קוד, מנסה שוב...');
         }
-    }, 5000);
+    }, 7000);
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
-        
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                console.log('מתחבר מחדש...');
-                startBot();
-            }
-        } else if (connection === 'open') {
-            console.log('הבוט מחובר ופעיל!');
-        }
-    });
-
-    // טיפול בהודעות נכנסות
-    sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
-        
-        console.log('התקבלה הודעה!');
-        await sock.sendMessage(msg.key.remoteJid, { text: 'הבוט פעיל ועובד!' });
+        if (update.connection === 'open') console.log('הבוט מחובר!');
     });
 }
-
-// לולאה שמונעת מהתהליך להיסגר
-setInterval(() => {}, 1000);
 
 startBot();
